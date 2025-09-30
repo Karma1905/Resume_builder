@@ -10,6 +10,7 @@ import CreateResume from "./pages/CreateResume";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
+import TemplateEditorPage from "./pages/TemplateEditorPage";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,8 @@ const App = () => (
               <Route path="signup" element={<Signup />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
+              <Route path="editor/:templateId" element={<TemplateEditorPage />} />
+
             </Route>
           </Routes>
         </AuthProvider>
