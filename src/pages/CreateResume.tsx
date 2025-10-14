@@ -110,20 +110,24 @@ export default function CreateResume() {
         </div>
 
         {/* Coming Soon Button */}
+        // Replacement for the "Coming Soon" card
         <div className="card-professional">
-          <div className="flex items-center mb-4">
-            <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center mr-4">
-              <Zap className="w-6 h-6 text-white" />
+            <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center mr-4">
+                    <Zap className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                    <h3 className="text-xl font-semibold text-foreground">AI-Powered Builder</h3>
+                    <p className="text-muted-foreground">Upload your resume and let AI enhance it</p>
+                </div>
             </div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">AI-Powered Builder</h3>
-              <p className="text-muted-foreground">Let AI help you create content</p>
-            </div>
-          </div>
-          <Button className="btn-outline-hero w-full" disabled>
-            <Zap className="mr-2 w-4 h-4" />
-            Coming Soon
-          </Button>
+            <Button 
+                className="btn-outline-hero w-full"
+                onClick={() => navigate('/ai-builder')} // Navigate to the new page
+            >
+                <Zap className="mr-2 w-4 h-4" />
+                Use AI Builder
+            </Button>
         </div>
       </motion.div>
 

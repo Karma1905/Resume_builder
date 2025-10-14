@@ -1,0 +1,21 @@
+{
+  "functions": {
+    "source": "functions",
+    "runtime": "python310",
+    "region": "asia-south1"
+  },
+  "hosting": {
+    "public": "build",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

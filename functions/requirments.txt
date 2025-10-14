@@ -1,0 +1,8 @@
+google-cloud-functions
+python-dotenv
+requests
+
+Add any specific libraries needed for PDF/DOCX parsing if used (e.g., python-docx, PyPDF2)
+Add your specific AI library here:
+google-genai
+openai

@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, FileText, LogIn, LogOut, User } from 'lucide-react';
+import { Home, FileText, LogIn, LogOut, User, Bot } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -33,6 +33,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       name: 'Create Resume',
       href: '/create-resume',
       icon: FileText,
+    },
+    {
+      name: 'Job Matcher',
+      href: '/job-matcher', // Must match your router path
+      icon: Bot, // You'll need to import 'Bot' from 'lucide-react'
     },
   ];
 

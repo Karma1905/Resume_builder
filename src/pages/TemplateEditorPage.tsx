@@ -1,4 +1,3 @@
-// src/pages/TemplateEditorPage.tsx
 import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import TemplateEditor from "@/components/TemplateEditor";
@@ -8,7 +7,6 @@ export default function TemplateEditorPage() {
   const { templateId } = useParams<{ templateId: string }>();
   const navigate = useNavigate();
 
-  // Predefined fake templates
   const templates: Record<string, ResumeData> = {
     professional: {
       fullName: "John Doe",
@@ -75,19 +73,46 @@ export default function TemplateEditorPage() {
     }
   };
 
-  const initialTemplate = templates[templateId || "professional"];
-  
-  if (!initialTemplate) {
-    return <div className="p-8">Template not found</div>;
+  let initialTemplate: ResumeData | undefined;
+
+  // 🧠 Handle AI imported resume
+  if (templateId === "ai-import") {
+    const aiData = localStorage.getItem("ai_enhanced_resume_data");
+    if (aiData) {
+      try {
+        initialTemplate = JSON.parse(aiData);
+      } catch (err) {
+        console.error("Failed to parse AI resume data", err);
+      }
+    }
+  } else if (templateId) {
+    initialTemplate = templates[templateId];
   }
 
-  // Editable state
-  const [resumeData, setResumeData] = useState<ResumeData>({ ...initialTemplate });
+  const [resumeData, setResumeData] = useState<ResumeData | undefined>(
+    initialTemplate ? { ...initialTemplate } : undefined
+  );
+
+  if (!initialTemplate) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-red-500 font-semibold mb-4">
+          ⚠️ No resume data found.
+        </p>
+        <button
+          onClick={() => navigate("/")}
+          className="px-4 py-2 bg-primary text-white rounded"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <TemplateEditor
-        resumeData={resumeData}
+        resumeData={resumeData!}
         setResumeData={setResumeData}
         onBack={() => navigate(-1)}
       />
