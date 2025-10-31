@@ -14,14 +14,13 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 openai_client = OpenAI(api_key=OPENAI_API_KEY, base_url="https://api.groq.com/openai/v1")
 genai.configure(api_key=GEMINI_API_KEY)
 
-# -------------------------
-#  Extract Text Functions
-# -------------------------
+# Extract Text Functions
 def extract_text_from_pdf(file):
-    text = ""
+    text = "" # This line was the source of the error
     reader = PyPDF2.PdfReader(file)
     for page in reader.pages:
         if page.extract_text():
+            # These lines were also corrupted
             text += page.extract_text() + "\n"
     return text.strip()
 
@@ -30,9 +29,7 @@ def extract_text_from_docx(file):
     return docx2txt.process(file)
 
 
-# -------------------------
-#  Llama JSON Generator
-# -------------------------
+# Llama JSON Generator
 def generate_llama_json(prompt):
     try:
         response = openai_client.chat.completions.create(
@@ -42,7 +39,7 @@ def generate_llama_json(prompt):
                 {"role": "user", "content": prompt},
             ],
             temperature=0.7,
-            max_tokens=2000,
+            max_tokens=4000, # Increased max tokens for larger JSON
             response_format={"type": "json_object"},
         )
         result_text = response.choices[0].message.content.strip()
@@ -52,17 +49,18 @@ def generate_llama_json(prompt):
         return {"error": "Failed to get a valid response from Llama."}
 
 
-# -------------------------
-#  Resume Enhancer Logic
-# -------------------------
+# Resume Enhancer Logic
 def process_resume_file(uploaded_file, model_choice, original_filename=None):
     filename = (original_filename or getattr(uploaded_file, "name", "")).lower()
 
     if filename.endswith(".pdf"):
+        # This function is only called as a fallback now.
+        # Our server's OCR logic bypasses this by sending a .txt file.
         resume_text = extract_text_from_pdf(uploaded_file)
     elif filename.endswith(".docx"):
         resume_text = extract_text_from_docx(uploaded_file)
     elif filename.endswith(".txt"):
+        # This is the primary path our server now uses for ALL file types
         resume_text = uploaded_file.read().decode("utf-8")
     else:
         return {"error": f"Unsupported file type: {filename}"}
@@ -70,24 +68,76 @@ def process_resume_file(uploaded_file, model_choice, original_filename=None):
     if not resume_text.strip():
         return {"error": "Could not extract any text."}
 
-    #  AI enhancement prompt
+    # --- THIS PROMPT IS NOW FULLY UPDATED ---
     prompt = f"""
-You are an AI resume writing assistant.
-Your job is to enhance the candidate’s resume text and return it in a structured JSON format.
+You are an expert AI resume parser and enhancer. Your task is to analyze the provided raw resume text, which may be jumbled from an OCR scan, and extract all relevant information into a precise JSON format.
 
-Format the response with:
-- "fullName"
-- "email"
-- "phone"
-- "location"
-- "summary"
-- "skills"
-- "experiences" (list of objects with id, title, company, startDate, endDate, description)
-- "education" (list of objects with id, degree, school, year)
+**JSON Structure Rules:**
+You MUST return a single JSON object with the following keys. Do NOT add any text before or after the JSON.
+The required structure is:
+{{
+  "fullName": "string",
+  "email": "string",
+  "phone": "string",
+  "location": "string",
+  "linkedin": "string (optional)",
+  "github": "string (optional)",
+  "portfolio": "string (optional)",
+  "summary": "string",
+  "skills": [
+    {{ "id": "string", "name": "string", "category": "string (e.g., Language, Framework/Library, Tool, Cloud, etc.)" }}
+  ],
+  "experiences": [
+    {{
+      "id": "string",
+      "title": "string",
+      "company": "string",
+      "location": "string (optional)",
+      "startDate": "string (e.g., YYYY-MM or Month YYYY)",
+      "endDate": "string (e.g., YYYY-MM or Present)",
+      "achievements": [
+        {{ "id": "string", "description": "string" }}
+      ]
+    }}
+  ],
+  "education": [
+    {{
+      "id": "string",
+      "degree": "string",
+      "school": "string",
+      "location": "string (optional)",
+      "startDate": "string (e.g., YYYY-MM or Month YYYY)",
+      "endDate": "string (e.g., YYYY-MM or Month YYYY)"
+    }}
+  ],
+  "projects": [
+    {{
+      "id": "string",
+      "name": "string",
+      "techStack": "string (e.g., React, Node.js, Firebase)",
+      "githubLink": "string (optional)",
+      "liveLink": "string (optional)",
+      "achievements": [
+        {{ "id": "string", "description": "string" }}
+      ]
+    }}
+  ],
+  "certifications": [
+    {{ "id": "string", "name": "string", "organization": "string", "date": "string" }}
+  ],
+  "languages": [
+    {{ "id": "string", "name": "string", "proficiency": "string (e.g., Native, Fluent)" }}
+  ]
+}}
 
-Enhance grammar, add action verbs, and make it more impactful without fabricating information.
+**Strict Instructions:**
+1.  **Be Strict:** Do NOT mix information. For example, "Design Studio" is a company name from 'Experience', it is NOT a 'Skill'. Read the context.
+2.  **Enhance:** Re-write the 'summary' and 'achievements' descriptions to be more professional and impactful. Use strong action verbs. Fix grammar and spelling.
+3.  **Fill Arrays:** Populate all arrays. If a section is not present in the resume, return an empty array `[]`.
+4.  **Generate IDs:** Create unique string IDs for all items, like `skill1`, `exp1`, `ach1`, etc.
+5.  **Parse Jumbled Text:** The input text may be out of order from an OCR scan. Read the entire text to find all sections. For example, 'Skills' might appear next to 'Experience'.
 ---
-RESUME TEXT:
+RAW RESUME TEXT:
 {resume_text}
 ---
 """
@@ -95,9 +145,7 @@ RESUME TEXT:
     return generate_llama_json(prompt)
 
 
-# -------------------------
-#  Job Matcher Logic
-# -------------------------
+# Job Matcher Logic
 def analyze_match(resume_text, jd_text):
     prompt = f"""
 You are an expert technical recruiter. Your task is to compare the provided RESUME with the JOB DESCRIPTION.
@@ -123,9 +171,7 @@ JOB DESCRIPTION:
     return generate_llama_json(prompt)
 
 
-# -------------------------
-#  Cover Letter Generator
-# -------------------------
+# Cover Letter Generator
 def generate_cover_letter(resume_text, jd_text, user_name):
     prompt = f"""
 Act as a professional career coach. Your task is to write a compelling, professional, and concise cover letter.
@@ -157,3 +203,31 @@ JOB DESCRIPTION TEXT:
     except Exception as e:
         print(f"Error calling Llama for Cover Letter: {e}")
         return "Sorry, an error occurred while generating the cover letter."
+    
+# Resume Critique Logic
+def critique_resume(resume_text):
+    prompt = f"""
+You are an expert career coach. Your task is to analyze the provided resume text.
+The text may be jumbled from an OCR scan.
+Return a JSON object with this *exact* structure:
+{{
+  "overall_feedback": "A brief, one-paragraph summary of the resume's strengths and weaknesses.",
+  "summary_suggestions": [
+    "Suggestion 1 for the 'Summary' section.",
+    "Suggestion 2 for the 'Summary' section."
+  ],
+  "experience_suggestions": [
+    "Suggestion 1 for the 'Experience' section (e.g., 'Use more action verbs like...')",
+    "Suggestion 2 for the 'Experience' section."
+  ],
+  "skills_suggestions": [
+    "Suggestion 1 for the 'Skills' section."
+  ]
+}}
+---
+RESUME TEXT:
+{resume_text}
+---
+"""
+    # This uses your existing function to call the Llama 3.1 model
+    return generate_llama_json(prompt)

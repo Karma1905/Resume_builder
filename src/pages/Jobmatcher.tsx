@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { analyzeMatch, generateCoverLetter } from '@/utils/api' // Actual API calls to backend
 import { getResumeTextFromState } from '@/utils/resumeUtils' // Local utility for form data
 import { useAuth } from '@/contexts/AuthContext';
-// Note: Removed imports for UI components (Button, Card, Tabs)
-import { Bot, FileText, TrendingUp, Edit3 } from 'lucide-react';
+import { Bot, FileText, TrendingUp, Edit3, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast'; 
 
 // Define the expected structure of the analysis result
@@ -55,6 +54,7 @@ export default function JobMatcherPage() {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
     const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Attempt to pre-fill the resume text from state
     const initialResumeText = getResumeTextFromState();
@@ -65,6 +65,7 @@ export default function JobMatcherPage() {
     const [coverLetter, setCoverLetter] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingCoverLetter, setIsLoadingCoverLetter] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
 
     // --- Conditional Return (must be after all hooks) ---
@@ -124,6 +125,58 @@ export default function JobMatcherPage() {
             setIsLoadingCoverLetter(false);
         }
     };
+
+    const handleUploadClick = () => {
+        // Triggers the hidden file input
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) {
+            return;
+        }
+
+        setIsUploading(true);
+        setError('');
+
+        const formData = new FormData();
+        formData.append('resumeFile', file);
+
+        try {
+            // Call your new local backend endpoint
+            // Your server runs on port 5000
+            const response = await fetch('http://localhost:5000/api/extract-text', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || 'File upload failed');
+            }
+
+            const data = await response.json();
+            
+            // --- DEBUGGING ---
+            // console.log("Received data from backend:", data);
+            // console.log("Text to set:", data.text);
+
+            setResumeText(data.text); // <-- SET THE TEXT!
+            toast({ title: "Success", description: "Resume text extracted!" });
+
+        } catch (err: any) {
+            const errorMessage = err.message || "An unknown error occurred during file upload.";
+            setError(errorMessage);
+            toast({ title: "Upload Error", description: errorMessage, variant: "destructive" });
+        } finally {
+            setIsUploading(false);
+            // Clear the file input so the same file can be uploaded again
+            if(fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+        }
+    };
     
     // --- Tabs Data ---
     const tabsData = analysisResult ? [
@@ -157,7 +210,7 @@ export default function JobMatcherPage() {
             title: '📝 Suggestions', 
             value: 'suggestions', 
             content: (
-                <div style={{}}>
+                <div>
                     {(analysisResult.tailoring_suggestions || []).map((suggestion, index) => (
                         <div 
                             key={`suggest-${index}`} 
@@ -168,7 +221,7 @@ export default function JobMatcherPage() {
                                 color: '#1e40af', 
                                 borderRadius: '4px', 
                                 fontSize: '14px',
-                                marginBottom: '12px', // FIX: replaced spaceY
+                                marginBottom: '12px',
                             }}
                         >
                             {suggestion}
@@ -182,6 +235,15 @@ export default function JobMatcherPage() {
 
     return (
         <div className="max-w-6xl mx-auto" style={{ padding: '20px' }}>
+            
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".pdf,.docx"
+                style={{ display: 'none' }}
+            />
+
             <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>
                 <Bot className="inline-block w-6 h-6 mr-2 text-primary" /> AI Job Matcher
             </h1>
@@ -197,16 +259,48 @@ export default function JobMatcherPage() {
                     <textarea
                         value={resumeText}
                         onChange={(e) => setResumeText(e.target.value)}
-                        placeholder="Paste your resume content here"
+                        placeholder="Paste your resume content here, or upload a file."
                         rows={15}
                         style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', resize: 'vertical' }}
                     />
-                    <button 
-                        onClick={() => navigate('/editor/ai-import')} 
-                        style={{ background: 'none', border: 'none', color: '#3b82f6', textDecoration: 'underline', padding: '0', marginTop: '8px', cursor: 'pointer' }}
-                    >
-                        Or, edit your saved resume
-                    </button>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
+                        <button
+                            // --- THIS IS THE FIX: 'GoClick' changed to 'onClick' ---
+                            onClick={handleUploadClick}
+                            disabled={isUploading}
+                            style={{ 
+                                padding: '8px 12px', 
+                                backgroundColor: isUploading ? '#9ca3af' : '#2563eb', // Gray when uploading
+                                color: 'white', 
+                                border: 'none', 
+                                borderRadius: '4px', 
+                                cursor: 'pointer',
+                                opacity: isUploading ? 0.7 : 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                fontWeight: '500'
+                            }}
+                        >
+                            {isUploading ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                                    <span>Uploading...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Upload style={{ width: '16px', height: '16px', marginRight: '8px' }} />
+                                    Upload Resume
+                                </>
+                            )}
+                        </button>
+                        <button 
+                            onClick={() => navigate('/editor/ai-import')} 
+                            style={{ background: 'none', border: 'none', color: '#3b82f6', textDecoration: 'underline', padding: '0', cursor: 'pointer' }}
+                        >
+                            Or, edit your saved resume
+                        </button>
+                    </div>
                 </div>
 
                 {/* Job Description Input (Card style simulation) */}
@@ -224,8 +318,8 @@ export default function JobMatcherPage() {
 
             <button
                 onClick={handleAnalyzeMatch}
-                disabled={isLoading || !resumeText.trim() || !jdText.trim()}
-                style={{ width: '100%', padding: '15px', fontSize: '18px', fontWeight: 'bold', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: (isLoading || !resumeText.trim() || !jdText.trim()) ? 0.6 : 1 }}
+                disabled={isLoading || isUploading || !resumeText.trim() || !jdText.trim()}
+                style={{ width: '100%', padding: '15px', fontSize: '18px', fontWeight: 'bold', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: (isLoading || isUploading || !resumeText.trim() || !jdText.trim()) ? 0.6 : 1 }}
             >
                 {isLoading ? (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -233,10 +327,10 @@ export default function JobMatcherPage() {
                         AI is analyzing the match...
                     </div>
                 ) : (
-                    <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Bot style={{ width: '20px', height: '20px', marginRight: '8px' }} />
                         Analyze Match
-                    </>
+                    </div>
                 )}
             </button>
             
@@ -272,10 +366,10 @@ export default function JobMatcherPage() {
                                     AI is writing your cover letter...
                                 </div>
                             ) : (
-                                <>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <Edit3 style={{ width: '16px', height: '16px', marginRight: '8px' }} />
                                     Generate AI Cover Letter
-                                </>
+                                </div>
                             )}
                         </button>
                     </div>
@@ -291,7 +385,7 @@ export default function JobMatcherPage() {
                         rows={20}
                         placeholder="Your generated cover letter will appear here."
                         style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', resize: 'vertical' }}
-                        readOnly={false}
+                        onChange={(e) => setCoverLetter(e.target.value)} // Allow editing
                     />
                     <button 
                         onClick={() => navigator.clipboard.writeText(coverLetter || '')} 

@@ -76,15 +76,18 @@ export function Layout() {
 
         {/* Page Content */}
         <main className="p-6">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-          >
-            <Outlet />
-          </motion.div>
+          {/* We wrap the motion.div with AnimatePresence */}
+          <AnimatePresence mode="wait">
+            <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, x: 100 }}   // Start from the right
+                animate={{ opacity: 1, x: 0 }}     // Animate to center
+                exit={{ opacity: 0, x: -100 }}      // Exit to the left
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+              >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>

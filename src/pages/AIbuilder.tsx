@@ -6,8 +6,20 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Zap, Upload, FileText } from 'lucide-react';
+// --- 1. IMPORT NEW COMPONENTS ---
+import { Zap, Upload, FileText, Lightbulb, CheckCircle, XCircle } from 'lucide-react';
+// --- THIS IS THE FIX ---
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast'; 
+
+// --- 2. DEFINE THE SUGGESTIONS TYPE ---
+interface SuggestionResult {
+    overall_feedback: string;
+    summary_suggestions: string[];
+    experience_suggestions: string[];
+    skills_suggestions: string[];
+    error?: string;
+}
 
 export default function AIBuilderPage() {
 
@@ -19,6 +31,11 @@ export default function AIBuilderPage() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    
+    // --- 3. ADD NEW STATE FOR SUGGESTIONS ---
+    const [isCritiquing, setIsCritiquing] = useState(false);
+    const [suggestions, setSuggestions] = useState<SuggestionResult | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     
     // --- Conditional Return (must be after all hooks) ---
     if (!currentUser) {
@@ -68,6 +85,47 @@ export default function AIBuilderPage() {
         }
     };
 
+    // --- 4. ADD NEW HANDLER FOR SUGGESTIONS ---
+    const handleViewSuggestions = async () => {
+        if (!selectedFile) {
+            setError("Please select a file to upload.");
+            toast({ title: "Error", description: "Please select a file to upload.", variant: "destructive" });
+            return;
+        }
+
+        setError('');
+        setIsCritiquing(true);
+        setSuggestions(null);
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        try {
+            // Call your new local backend endpoint
+            const response = await fetch('http://localhost:5000/api/critique-resume', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || 'Failed to get suggestions.');
+            }
+
+            setSuggestions(data);
+            setIsModalOpen(true); // Open the modal on success
+
+        } catch (err: any) {
+            const errorMessage = err.message || "An unexpected error occurred.";
+            setError(errorMessage);
+            toast({ title: "Error", description: errorMessage, variant: "destructive" });
+        } finally {
+            setIsCritiquing(false);
+        }
+    };
+
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -89,7 +147,7 @@ export default function AIBuilderPage() {
                     <Select 
                         value={modelChoice} 
                         onValueChange={setModelChoice}
-                        disabled={isLoading}
+                        disabled={isLoading || isCritiquing} // Disable if any action is loading
                     >
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Choose AI Model" />
@@ -134,23 +192,95 @@ export default function AIBuilderPage() {
                         <p className="text-sm text-red-500 font-medium">Error: {error}</p>
                     )}
 
-                    <Button 
-                        onClick={handleFileUpload} 
-                        disabled={isLoading || !selectedFile}
-                        className="w-full btn-hero"
-                    >
-                        {isLoading ? (
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                                {`AI is enhancing your resume using ${modelChoice}...`}
-                            </div>
-                        ) : (
-                            <>
-                                <Zap className="w-4 h-4 mr-2" />
-                                Enhance and Edit
-                            </>
-                        )}
-                    </Button>
+                    {/* --- 5. UPDATE BUTTONS --- */}
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        {/* Enhance and Edit Button */}
+                        <Button 
+                            onClick={handleFileUpload} 
+                            disabled={isLoading || isCritiquing || !selectedFile}
+                            className="w-full btn-hero"
+                        >
+                            {isLoading ? (
+                                <div className="flex items-center">
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                                    {`AI is enhancing...`}
+                                </div>
+                            ) : (
+                                <>
+                                    <Zap className="w-4 h-4 mr-2" />
+                                    Enhance and Edit
+                                </>
+                            )}
+                        </Button>
+                        
+                        {/* View Suggestions Button (New) */}
+                        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                            <DialogTrigger asChild>
+                                <Button 
+                                    onClick={handleViewSuggestions} 
+                                    disabled={isLoading || isCritiquing || !selectedFile}
+                                    className="w-full"
+                                    variant="outline"
+                                >
+                                    {isCritiquing ? (
+                                        <div className="flex items-center">
+                                            <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin mr-2" />
+                                            {`Getting suggestions...`}
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <Lightbulb className="w-4 h-4 mr-2" />
+                                            View Suggestions
+                                        </>
+                                    )}
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[600px]">
+                                <DialogHeader>
+                                    <DialogTitle className="text-2xl">AI Resume Critique</DialogTitle>
+                                </DialogHeader>
+                                {suggestions ? (
+                                    <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                                        <div>
+                                            <h3 className="font-semibold text-lg mb-2">Overall Feedback</h3>
+                                            <p className="text-sm text-muted-foreground">{suggestions.overall_feedback}</p>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg mb-2">Summary Suggestions</h3>
+                                            <ul className="list-disc pl-5 space-y-2">
+                                                {suggestions.summary_suggestions.map((item, i) => (
+                                                    <li key={i} className="text-sm">{item}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg mb-2">Experience Suggestions</h3>
+                                            <ul className="list-disc pl-5 space-y-2">
+                                                {suggestions.experience_suggestions.map((item, i) => (
+                                                    <li key={i} className="text-sm">{item}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg mb-2">Skills Suggestions</h3>
+                                            <ul className="list-disc pl-5 space-y-2">
+                                                {suggestions.skills_suggestions.map((item, i) => (
+                                                    <li key={i} className="text-sm">{item}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p>Loading suggestions...</p>
+                                )}
+                                <DialogFooter>
+                                    <DialogClose asChild>
+                                        <Button type="button">Close</Button>
+                                    </DialogClose>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                 </CardContent>
             </Card>
             
