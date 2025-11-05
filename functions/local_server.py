@@ -3,7 +3,8 @@ from flask_cors import CORS
 import tempfile
 import os
 
-from utils import process_resume_file, analyze_match, generate_cover_letter, critique_resume
+# *** FIX 1: Changed 'process_resume_file' to 'process_resume_text' ***
+from utils import process_resume_text, analyze_match, generate_cover_letter, critique_resume 
 import pytesseract
 from pdf2image import convert_from_bytes
 import pdfplumber
@@ -11,6 +12,7 @@ import docx
 import cv2
 import numpy as np
 
+# NOTE: Ensure you have Tesseract and Poppler installed and paths are correct.
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 POPPLER_PATH = r'D:\Projects\Release-25.07.0-0\poppler-25.07.0\Library\bin'
 
@@ -28,6 +30,7 @@ def preprocess_image_for_ocr(image):
     thresh = cv2.medianBlur(thresh, 3)
     return thresh
 
+# ROBUST PDF EXTRACTION
 def extract_text_from_pdf(file_stream):
     text = ""
     try:
@@ -90,6 +93,7 @@ def ai_resume_parser():
         elif original_filename.endswith('.docx'):
             raw_text = extract_text_from_docx(uploaded_file.stream)
         elif original_filename.endswith('.txt'):
+            uploaded_file.stream.seek(0)
             raw_text = uploaded_file.stream.read().decode('utf-8')
         else:
             return jsonify({"error": "Unsupported file type."}), 400
@@ -97,17 +101,9 @@ def ai_resume_parser():
         if raw_text is None or len(raw_text.strip()) < 20:
             return jsonify({"error": "Could not extract any text."}), 400
 
-        tmp_path = ""
-        with tempfile.NamedTemporaryFile(delete=False, mode='w', encoding='utf-8', suffix=".txt") as tmp:
-            tmp.write(raw_text)
-            tmp_path = tmp.name
+        # *** FIX 2: Changed function call to 'process_resume_text' ***
+        result = process_resume_text(raw_text, model_choice)
 
-        result = {}
-        with open(tmp_path, "rb") as f:
-            result = process_resume_file(f, model_choice, "resume.txt")
-
-        os.remove(tmp_path)
-        
         if "resumeData" in result and result["resumeData"].get("fullName"):
             return jsonify(result)
         else:
@@ -184,6 +180,7 @@ def ai_resume_critique():
         elif original_filename.endswith('.docx'):
             raw_text = extract_text_from_docx(uploaded_file.stream)
         elif original_filename.endswith('.txt'):
+            uploaded_file.stream.seek(0)
             raw_text = uploaded_file.stream.read().decode('utf-8')
         else:
             return jsonify({"error": "Unsupported file type."}), 400

@@ -29,6 +29,25 @@ interface CritiqueResult {
   error?: string;
 }
 
+// Helper component to render a list of suggestions
+const SuggestionsList = ({ title, suggestions }: { title: string, suggestions: string[] }) => (
+    <div className="space-y-2">
+        <h4 className="text-lg font-semibold border-b pb-1 mt-4">{title}</h4>
+        {suggestions.length > 0 ? (
+            <ul className="list-disc pl-5 space-y-2 text-muted-foreground text-sm">
+                {suggestions.map((suggestion, index) => (
+                    <li key={index}>{suggestion}</li>
+                ))}
+            </ul>
+        ) : (
+            <p className="text-sm text-green-600 flex items-center">
+                <Check className="w-4 h-4 mr-2" /> Looks good! No immediate issues found here.
+            </p>
+        )}
+    </div>
+);
+
+
 export default function AIBuilderPage() {
 
     const { currentUser } = useAuth();
@@ -82,6 +101,7 @@ export default function AIBuilderPage() {
             
             setSelectedMissingSkills(response.analysis.missingSkills || []);
             
+            // Open the skill modal first after enhancing
             setIsSkillModalOpen(true); 
 
         } catch (err: any) {
@@ -122,6 +142,12 @@ export default function AIBuilderPage() {
         setError('');
         setIsCritiquing(true);
         setSuggestions(null);
+        
+        
+        if (apiResponse) {
+             localStorage.setItem('ai_enhanced_resume_data', JSON.stringify(apiResponse.resumeData));
+        }
+
         const formData = new FormData();
         formData.append('file', selectedFile);
 
@@ -130,10 +156,12 @@ export default function AIBuilderPage() {
                 method: 'POST',
                 body: formData,
             });
-            const data = await response.json();
+            const data: CritiqueResult = await response.json();
             if (!response.ok || data.error) {
                 throw new Error(data.error || 'Failed to get suggestions.');
             }
+            
+           
             setSuggestions(data);
             setIsCritiqueModalOpen(true);
         } catch (err: any) {
@@ -144,6 +172,7 @@ export default function AIBuilderPage() {
             setIsCritiquing(false);
         }
     };
+    
 
     return (
         <motion.div
@@ -250,7 +279,54 @@ export default function AIBuilderPage() {
                                     )}
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="sm:max-w-[600px]">
+                            <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle className="text-2xl flex items-center">
+                                        <Lightbulb className="w-6 h-6 mr-2 text-primary" />
+                                        AI Resume Critique
+                                    </DialogTitle>
+                                    <p className="text-sm text-muted-foreground pt-1">
+                                        Review these suggestions before enhancing your resume.
+                                    </p>
+                                </DialogHeader>
+                                
+                                {suggestions ? (
+                                    <div className="py-4 space-y-4">
+                                        <div className="bg-primary/5 p-3 rounded-lg border border-primary/20">
+                                            <h3 className="text-lg font-bold text-primary mb-2">Overall Feedback</h3>
+                                            <p className="text-sm text-foreground">{suggestions.overall_feedback || 'No overall feedback provided.'}</p>
+                                        </div>
+
+                                        <SuggestionsList 
+                                            title="Summary Suggestions" 
+                                            suggestions={suggestions.summary_suggestions || []} 
+                                        />
+
+                                        <SuggestionsList 
+                                            title="Experience Suggestions" 
+                                            suggestions={suggestions.experience_suggestions || []} 
+                                        />
+
+                                        <SuggestionsList 
+                                            title="Skills/Keywords Suggestions" 
+                                            suggestions={suggestions.skills_suggestions || []} 
+                                        />
+                                        
+                                        {suggestions.error && (
+                                            <div className="text-sm text-red-500 mt-4">Critique Error: {suggestions.error}</div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-center items-center h-48">
+                                        <p className="text-muted-foreground">Loading suggestions...</p>
+                                    </div>
+                                )}
+                                
+                                <DialogFooter className="sm:justify-end">
+                                    <DialogClose asChild>
+                                        <Button variant="secondary" className="w-full sm:w-auto mt-2 sm:mt-0">Close Critique</Button>
+                                    </DialogClose>
+                                </DialogFooter>
                             </DialogContent>
                         </Dialog>
                     </div>
