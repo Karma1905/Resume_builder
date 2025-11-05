@@ -7,29 +7,49 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, FileDown, FileText, Plus, Trash } from "lucide-react";
+import { ArrowLeft, FileDown, FileText, Plus, Trash, Bot } from "lucide-react"; // ✅ ADDED Bot
 import { exportToTxt } from "@/utils/resumeExport";
 import html2pdf from 'html2pdf.js';
 
 import { ProfessionalTemplate } from "./templates/ProfessionalTemplate";
 import { CreativeTemplate } from "./templates/CreativeTemplate";
 import { ExecutiveTemplate } from "./templates/ExecutiveTemplate";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 
 export interface Props {
   resumeData: ResumeData;
   setResumeData: (data: ResumeData) => void;
   onBack: () => void;
   templateId: string;
+  onMatchResume?: () => void; // ✅ ADDED
 }
 
+// --- MAIN COMPONENT ---
 export default function TemplateEditor({ resumeData, setResumeData, onBack, templateId }: Props) {
+  
+  // --- 2. NEW HANDLER FUNCTIONS FOR ALL SECTIONS ---
+
+  // Handle simple top-level fields (e.g., fullName, email, linkedin)
   const handleChange = (field: keyof ResumeData, value: string) => {
     setResumeData({ ...resumeData, [field]: value });
   };
 
-  const handleSkillChange = (id: string, field: keyof Skill, value: string) => {
-    const updatedSkills = resumeData.skills.map(skill =>
-      skill.id === id ? { ...skill, [field]: value } : skill
+  // --- Generic Handlers for Lists (Skills, Certs, Langs) ---
+  const handleItemChange = <T extends { id: string }>(
+    listName: keyof ResumeData, 
+    itemId: string, 
+    field: keyof T, 
+    value: string
+  ) => {
+    const list = resumeData[listName] as T[];
+    const updatedList = list.map(item => 
+      item.id === itemId ? { ...item, [field]: value } : item
     );
     setResumeData({ ...resumeData, skills: updatedSkills });
   };
@@ -41,9 +61,16 @@ export default function TemplateEditor({ resumeData, setResumeData, onBack, temp
     setResumeData({ ...resumeData, skills: resumeData.skills.filter(s => s.id !== id) });
   };
 
-  const handleExperienceChange = (id: string, field: keyof Experience, value: string) => {
-    const updatedExperiences = resumeData.experiences.map(exp =>
-      exp.id === id ? { ...exp, [field]: value } : exp
+  // --- Handlers for Nested Lists (Experience & Projects Achievements) ---
+  const handleNestedItemChange = <T extends Experience | Project>(
+    listName: 'experiences' | 'projects',
+    itemId: string,
+    field: keyof T,
+    value: string
+  ) => {
+    const list = resumeData[listName] as T[];
+    const updatedList = list.map(item =>
+      item.id === itemId ? { ...item, [field]: value } : item
     );
     setResumeData({ ...resumeData, experiences: updatedExperiences });
   };
@@ -492,6 +519,7 @@ export default function TemplateEditor({ resumeData, setResumeData, onBack, temp
           </AnimatePresence>
         </div>
 
+        {/* --- Download Buttons (Unchanged) --- */}
         <div className="flex gap-4 mt-6">
           <Button onClick={() => exportToTxt(resumeData)} className="bg-gradient-primary">
             <FileText className="w-4 h-4 mr-2" /> Download TXT

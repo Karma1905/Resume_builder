@@ -30,6 +30,7 @@ export default function AIPreviewPage() {
       }
     } else {
       navigate("/");
+      navigate("/"); // Redirect if no data found
     }
   }, [navigate]);
 

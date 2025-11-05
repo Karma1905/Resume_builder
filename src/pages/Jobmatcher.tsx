@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { analyzeMatch, generateCoverLetter } from '@/utils/api' // Actual API calls to backend
 import { getResumeTextFromState } from '@/utils/resumeUtils' // Local utility for form data
@@ -67,6 +67,80 @@ export default function JobMatcherPage() {
     const [isLoadingCoverLetter, setIsLoadingCoverLetter] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
+
+    // ✅ Helper function: converts structured resume to readable text
+const formatResumeAsText = (data) => {
+  const lines = [];
+
+  if (data.fullName) lines.push(data.fullName);
+  const contactInfo = [
+    data.email,
+    data.phone,
+    data.location,
+    data.linkedin,
+    data.github,
+    data.portfolio,
+  ].filter(Boolean).join(" | ");
+  if (contactInfo) lines.push(contactInfo);
+
+  if (data.summary) lines.push("\nSUMMARY", data.summary);
+
+  if (Array.isArray(data.skills) && data.skills.length) {
+    lines.push("\nSKILLS");
+    lines.push(data.skills.map((s) => s.name).join(", "));
+  }
+
+  if (Array.isArray(data.experiences) && data.experiences.length) {
+    lines.push("\nEXPERIENCE");
+    data.experiences.forEach((exp) => {
+      lines.push(`${exp.title} - ${exp.company}`);
+      if (exp.location) lines.push(exp.location);
+      lines.push(`${exp.startDate || ""} - ${exp.endDate || "Present"}`);
+      if (Array.isArray(exp.achievements)) {
+        exp.achievements.forEach((a) => lines.push(`• ${a.description}`));
+      }
+      lines.push("");
+    });
+  }
+
+  if (Array.isArray(data.education) && data.education.length) {
+    lines.push("\nEDUCATION");
+    data.education.forEach((edu) => {
+      lines.push(`${edu.degree} - ${edu.school}`);
+      if (edu.location) lines.push(edu.location);
+      lines.push(`${edu.startDate || ""} - ${edu.endDate || "Present"}`);
+    });
+  }
+
+  if (Array.isArray(data.projects) && data.projects.length) {
+    lines.push("\nPROJECTS");
+    data.projects.forEach((proj) => {
+      lines.push(proj.name);
+      if (proj.techStack) lines.push(`Tech: ${proj.techStack}`);
+      if (Array.isArray(proj.achievements)) {
+        proj.achievements.forEach((a) => lines.push(`• ${a.description}`));
+      }
+      lines.push("");
+    });
+  }
+
+  return lines.join("\n");
+};
+
+// ✅ Auto-load the resume when user comes from TemplateEditor
+useEffect(() => {
+  const saved = localStorage.getItem("resume_for_job_match");
+  if (saved) {
+    try {
+      const resume = JSON.parse(saved);
+      const formattedText = formatResumeAsText(resume);
+      setResumeText(formattedText);
+    } catch (err) {
+      console.error("Error reading resume_for_job_match", err);
+    }
+  }
+}, []);
+
 
     // --- Conditional Return (must be after all hooks) ---
     if (!currentUser) {
@@ -158,11 +232,8 @@ export default function JobMatcherPage() {
 
             const data = await response.json();
             
-            // --- DEBUGGING ---
-            // console.log("Received data from backend:", data);
-            // console.log("Text to set:", data.text);
 
-            setResumeText(data.text); // <-- SET THE TEXT!
+            setResumeText(data.text); 
             toast({ title: "Success", description: "Resume text extracted!" });
 
         } catch (err: any) {

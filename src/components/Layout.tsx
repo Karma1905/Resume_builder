@@ -9,24 +9,26 @@ export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // ✅ Dynamic page title mapping
   const getPageTitle = () => {
-    switch (location.pathname) {
-      case '/':
-        return 'Home';
-      case '/create-resume':
-        return 'Create Resume';
-      case '/login':
-        return 'Login';
-      case '/signup':
-        return 'Sign Up';
-      default:
-        return 'Resume Builder';
-    }
+    const pathMap: Record<string, string> = {
+      '/': 'Home',
+      '/create-resume': 'Create Resume',
+      '/login': 'Login',
+      '/signup': 'Sign Up',
+      '/ai-builder': 'AI Builder',
+      '/ai-builder/result': 'AI Builder Result',
+      '/editor/ai-import': 'AI Resume Editor',
+      '/job-matcher': 'Job Matcher',
+    };
+
+    // Return matching title or default one
+    return pathMap[location.pathname] || 'Resume Builder';
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Overlay */}
+      {/* Overlay when sidebar opens */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
@@ -58,7 +60,7 @@ export function Layout() {
                   <Menu className="w-5 h-5" />
                 )}
               </button>
-              
+
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => navigate('/')}
@@ -76,15 +78,14 @@ export function Layout() {
 
         {/* Page Content */}
         <main className="p-6">
-          {/* We wrap the motion.div with AnimatePresence */}
           <AnimatePresence mode="wait">
             <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, x: 100 }}   // Start from the right
-                animate={{ opacity: 1, x: 0 }}     // Animate to center
-                exit={{ opacity: 0, x: -100 }}      // Exit to the left
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-              >
+              key={location.pathname}
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -100 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+            >
               <Outlet />
             </motion.div>
           </AnimatePresence>

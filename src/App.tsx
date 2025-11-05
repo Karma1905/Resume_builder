@@ -16,9 +16,6 @@ import JobMatcherPage from "./pages/Jobmatcher";
 import AIPreviewPage from "@/pages/AIpreviewpage";
 import AIBuilderResultPage from "@/pages/AIbuilderResultPage";
 
-// --- NEW IMPORTS ---
-
-// -------------------
 
 const queryClient = new QueryClient();
 

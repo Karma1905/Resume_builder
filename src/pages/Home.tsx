@@ -169,7 +169,7 @@ export default function Home() {
   );
 }
 
-// --- HELPER COMPONENT (No change) ---
+// --- HELPER COMPONENT 
 
 // 1. Define the Variants (the animation states)
 const containerVariants: Variants = { // --- CHANGED HERE ---
