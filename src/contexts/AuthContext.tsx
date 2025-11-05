@@ -6,7 +6,7 @@ import {
     signOut,
     onAuthStateChanged
 } from 'firebase/auth';
-import { auth } from '@/lib/firebase'; // 👈 make sure this path is correct in your project
+import { auth } from '@/lib/firebase'; 
 
 interface AuthContextType {
     currentUser: User | null;

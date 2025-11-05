@@ -1,20 +1,18 @@
-// A reusable structure for bullet points
-// We'll use this for both Experience and Projects.
+
 export interface Achievement {
   id: string;
   description: string;
 }
 
-// --- UPDATED INTERFACES ---
 
 export interface Experience {
   id: string;
   title: string;
   company: string;
-  location?: string; // New field
+  location?: string;
   startDate: string;
   endDate: string;
-  achievements: Achievement[]; // Replaced 'description: string'
+  achievements: Achievement[];
 }
 
 export interface Education {

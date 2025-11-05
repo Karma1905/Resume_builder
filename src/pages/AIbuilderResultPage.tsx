@@ -4,7 +4,7 @@ import { ResumeData } from "@/types/resume";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, FileDown, FileText } from "lucide-react";
 import { exportToTxt } from "@/utils/resumeExport";
-import html2pdf from 'html2pdf.js'; // --- 1. IMPORT html2pdf ---
+import html2pdf from 'html2pdf.js';
 
 export default function AIBuilderResultPage() {
   const navigate = useNavigate();
@@ -14,8 +14,7 @@ export default function AIBuilderResultPage() {
     const stored = localStorage.getItem("ai_enhanced_resume_data");
     if (stored) {
       try {
-        const parsedData = JSON.parse(stored);
-        // Ensure all new arrays are present to avoid crashes
+        const parsedData: ResumeData = JSON.parse(stored);
         setData({
           ...parsedData,
           skills: parsedData.skills || [],
@@ -34,7 +33,6 @@ export default function AIBuilderResultPage() {
     }
   }, [navigate]);
 
-  // --- 2. ADD THE PDF EXPORT FUNCTION ---
   const handleExportPdf = () => {
     if (!data) return;
     const element = document.getElementById('ai-result-content');
@@ -45,7 +43,7 @@ export default function AIBuilderResultPage() {
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2 },
         jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-      };
+      } as any;
       html2pdf().from(element).set(options).save();
     }
   };
@@ -62,16 +60,13 @@ export default function AIBuilderResultPage() {
           <Button onClick={() => exportToTxt(data)}>
             <FileText className="w-4 h-4 mr-2" /> Download TXT
           </Button>
-          {/* --- 3. UPDATE ONCLICK HANDLER --- */}
           <Button onClick={handleExportPdf}>
             <FileDown className="w-4 h-4 mr-2" /> Download PDF
           </Button>
         </div>
       </div>
 
-      {/* --- 4. ADD ID TO THIS WRAPPER --- */}
       <div id="ai-result-content" className="border p-8 rounded-lg bg-white shadow space-y-6">
-        {/* --- PERSONAL INFO (UPDATED) --- */}
         <h1 className="text-3xl font-bold">{data.fullName}</h1>
         <div className="text-sm text-gray-600 space-x-2">
           <span>{data.email}</span>
@@ -87,13 +82,11 @@ export default function AIBuilderResultPage() {
         </div>
         <hr />
 
-        {/* --- SUMMARY (UPDATED) --- */}
         <section>
           <h2 className="font-semibold text-lg">Summary</h2>
           <p>{data.summary}</p>
         </section>
 
-        {/* --- SKILLS (UPDATED) --- */}
         {data.skills.length > 0 && (
           <section>
             <h2 className="font-semibold text-lg mt-2">Skills</h2>
@@ -107,7 +100,6 @@ export default function AIBuilderResultPage() {
           </section>
         )}
 
-        {/* --- EXPERIENCE (UPDATED) --- */}
         {data.experiences.length > 0 && (
           <section>
             <h2 className="font-semibold text-lg mt-2">Experience</h2>
@@ -125,7 +117,6 @@ export default function AIBuilderResultPage() {
           </section>
         )}
 
-        {/* --- EDUCATION (UPDATED) --- */}
         {data.education.length > 0 && (
           <section>
             <h2 className="font-semibold text-lg mt-2">Education</h2>
@@ -139,7 +130,6 @@ export default function AIBuilderResultPage() {
           </section>
         )}
 
-        {/* --- PROJECTS (NEW) --- */}
         {data.projects.length > 0 && (
           <section>
             <h2 className="font-semibold text-lg mt-2">Projects</h2>

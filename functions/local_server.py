@@ -11,9 +11,8 @@ import docx
 import cv2
 import numpy as np
 
-
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-POPPLER_PATH = r'D:\Projects\Release-25.07.0-0\poppler-25.07.0\Library\bin' # <-- Use your correct path here
+POPPLER_PATH = r'D:\Projects\Release-25.07.0-0\poppler-25.07.0\Library\bin'
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}, r"/*": {"origins": "*"}})
@@ -22,11 +21,7 @@ CORS(app, resources={r"/api/*": {"origins": "*"}, r"/*": {"origins": "*"}})
 def home():
     return jsonify({"message": "✅ Local AI server running successfully."})
 
-
 def preprocess_image_for_ocr(image):
-    """
-    Cleans up an image (from pdf2image) to improve OCR accuracy.
-    """
     open_cv_image = np.array(image) 
     gray = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
     thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
@@ -34,10 +29,6 @@ def preprocess_image_for_ocr(image):
     return thresh
 
 def extract_text_from_pdf(file_stream):
-    """
-    Robust PDF text extraction.
-    Tries fast digital extraction first, then falls back to slow, preprocessed OCR.
-    """
     text = ""
     try:
         file_stream.seek(0)
@@ -47,7 +38,7 @@ def extract_text_from_pdf(file_stream):
                 if page_text:
                     text += page_text + "\n"
         
-        if text and len(text.strip()) > 20: 
+        if text and len(text.strip()) > 20:
             print("--- Extracted text with pdfplumber (fast mode) ---")
             return text
     except Exception as e:
@@ -73,7 +64,6 @@ def extract_text_from_pdf(file_stream):
         return None
 
 def extract_text_from_docx(file_stream):
-    """Helper function to extract text from a DOCX."""
     try:
         doc = docx.Document(file_stream)
         text = ""
@@ -84,7 +74,6 @@ def extract_text_from_docx(file_stream):
         print(f"Error reading DOCX: {e}")
         return None
 
-# 1. AI Resume Parser Endpoint
 @app.route("/aiResumeParser", methods=["POST"])
 def ai_resume_parser():
     try:
@@ -108,7 +97,6 @@ def ai_resume_parser():
         if raw_text is None or len(raw_text.strip()) < 20:
             return jsonify({"error": "Could not extract any text."}), 400
 
-        
         tmp_path = ""
         with tempfile.NamedTemporaryFile(delete=False, mode='w', encoding='utf-8', suffix=".txt") as tmp:
             tmp.write(raw_text)
@@ -119,14 +107,17 @@ def ai_resume_parser():
             result = process_resume_file(f, model_choice, "resume.txt")
 
         os.remove(tmp_path)
-        return jsonify(result)
+        
+        if "resumeData" in result and result["resumeData"].get("fullName"):
+            return jsonify(result)
+        else:
+            print("--- AI failed to parse, returning error ---")
+            return jsonify({"error": "The AI could not understand this resume. It may be too corrupted or unreadable."}), 400
 
     except Exception as e:
         print(f"Error in /aiResumeParser: {e}")
         return jsonify({"error": str(e)}), 500
 
-
-# 2. Job Matcher Endpoint
 @app.route("/aiJobMatcher", methods=["POST"])
 def ai_job_matcher():
     try:
@@ -140,8 +131,6 @@ def ai_job_matcher():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# ✍️ 3. Cover Letter Generator
 @app.route("/aiCoverLetter", methods=["POST"])
 def ai_cover_letter():
     try:
@@ -156,12 +145,8 @@ def ai_cover_letter():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-#  extraction-only endpoint (for Job Matcher)
 @app.route("/api/extract-text", methods=["POST"])
 def extract_resume_text():
-    """
-    API endpoint to extract raw text from an uploaded resume file.
-    """
     if 'resumeFile' not in request.files:
         return jsonify({"error": "No file part"}), 400
     file = request.files['resumeFile']
@@ -184,7 +169,6 @@ def extract_resume_text():
         print(f"Server error: {e}")
         return jsonify({"error": "An internal error occurred"}), 500
 
-# 🧐 6. NEW Resume Critique Endpoint
 @app.route("/api/critique-resume", methods=["POST"])
 def ai_resume_critique():
     try:
@@ -214,7 +198,5 @@ def ai_resume_critique():
         print(f"Error in /api/critique-resume: {e}")
         return jsonify({"error": str(e)}), 500
 
-
 if __name__ == "__main__":
-    # Runs on http://localhost:5000 by default 
     app.run(debug=True, port=5000)
